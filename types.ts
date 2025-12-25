@@ -28,6 +28,8 @@ export interface Appointment {
   id: string;
   patientId: string;
   patientName: string;
+  phone: string; // Added for notifications
+  email?: string; // Added for notifications
   date: string;
   scheduledTime: string;
   actualStartTime?: string;
