@@ -1,11 +1,11 @@
 
 import React, { useState } from 'react';
-import { UserRole } from './types.ts';
-import Dashboard from './components/Dashboard.tsx';
-import ChatBot from './components/ChatBot.tsx';
-import { useQueue } from './hooks/useQueue.tsx';
-import PatientView from './components/PatientView.tsx';
-import NotificationToast from './components/NotificationToast.tsx';
+import { UserRole } from './types';
+import Dashboard from './components/Dashboard';
+import ChatBot from './components/ChatBot';
+import { useQueue } from './hooks/useQueue';
+import PatientView from './components/PatientView';
+import NotificationToast from './components/NotificationToast';
 
 const App: React.FC = () => {
   const [role, setRole] = useState<UserRole>(UserRole.RECEPTIONIST);

@@ -1,6 +1,6 @@
 
 import { GoogleGenAI } from "@google/genai";
-import { CLINIC_CONFIG } from "../constants.ts";
+import { CLINIC_CONFIG } from "../constants";
 
 const SYSTEM_INSTRUCTION = `
 You are the AI Clinical Assistant for ${CLINIC_CONFIG.name}, managed by ${CLINIC_CONFIG.doctorName}.

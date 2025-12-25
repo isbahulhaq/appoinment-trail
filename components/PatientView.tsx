@@ -1,8 +1,8 @@
 
 import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { AppointmentStatus, Priority } from '../types.ts';
-import { CLINIC_CONFIG } from '../constants.ts';
-import { askChatbot } from '../services/geminiService.ts';
+import { AppointmentStatus } from '../types';
+import { CLINIC_CONFIG } from '../constants';
+import { askChatbot } from '../services/geminiService';
 
 interface PatientViewProps {
   queue: any;

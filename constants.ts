@@ -1,5 +1,5 @@
 
-import { ClinicSettings, AppointmentStatus, Priority } from './types.ts';
+import { ClinicSettings, AppointmentStatus, Priority } from './types';
 
 export const CLINIC_CONFIG: ClinicSettings = {
   name: "Wellness Family Clinic",

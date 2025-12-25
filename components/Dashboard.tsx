@@ -1,8 +1,8 @@
 
 import React, { useState } from 'react';
-import { UserRole, AppointmentStatus, Priority, Appointment } from '../types.ts';
-import LiveTimer from './LiveTimer.tsx';
-import { CLINIC_CONFIG } from '../constants.ts';
+import { UserRole, AppointmentStatus, Priority, Appointment } from '../types';
+import LiveTimer from './LiveTimer';
+import { CLINIC_CONFIG } from '../constants';
 
 interface DashboardProps {
   role: UserRole;
@@ -39,7 +39,6 @@ const Dashboard: React.FC<DashboardProps> = ({ role, queue }) => {
 
   return (
     <div className={`space-y-8 transition-all duration-500 ${isPaused ? 'opacity-70 grayscale-[0.2]' : 'opacity-100'}`}>
-      {/* Header Section */}
       <header className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
         <div className="flex items-center gap-5">
           <div className="w-14 h-14 bg-indigo-600 rounded-2xl flex items-center justify-center text-white shadow-xl rotate-3">
@@ -81,9 +80,7 @@ const Dashboard: React.FC<DashboardProps> = ({ role, queue }) => {
         </div>
       </header>
 
-      {/* Stats and Analytics Grid - Reusing visual structure */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {/* In Consultation Card */}
         <div className="bg-white p-6 rounded-3xl border-2 border-slate-100 shadow-sm relative overflow-hidden">
           <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">In Consultation</p>
           {inProgress ? (
@@ -99,7 +96,6 @@ const Dashboard: React.FC<DashboardProps> = ({ role, queue }) => {
           )}
         </div>
 
-        {/* Priority Card */}
         <div className="bg-white p-6 rounded-3xl border-2 border-slate-100 shadow-sm">
           <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Next in Line</p>
           {nextUp ? (
@@ -126,7 +122,6 @@ const Dashboard: React.FC<DashboardProps> = ({ role, queue }) => {
         </div>
       </div>
 
-      {/* Main Roster Table */}
       <div className="bg-white rounded-[2.5rem] border-2 border-slate-100 shadow-2xl overflow-hidden">
         <div className="px-10 py-8 flex items-center justify-between border-b-2">
             <h2 className="font-black text-slate-900 text-xl tracking-tighter uppercase">Live Roster</h2>
@@ -170,11 +165,10 @@ const Dashboard: React.FC<DashboardProps> = ({ role, queue }) => {
         </div>
       </div>
 
-      {/* Intake Modal */}
       {showAddModal && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xl z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-[3rem] shadow-2xl w-full max-w-xl overflow-hidden">
-            <div className="bg-indigo-600 p-10 text-white">
+            <div className="bg-indigo-600 p-10 text-white relative">
               <button onClick={() => setShowAddModal(false)} className="absolute top-8 right-8 p-3 bg-white/10 rounded-2xl transition-all">✕</button>
               <h3 className="text-3xl font-black uppercase">Admission</h3>
             </div>
@@ -187,7 +181,7 @@ const Dashboard: React.FC<DashboardProps> = ({ role, queue }) => {
               />
               <div className="grid grid-cols-2 gap-4">
                 <input 
-                  type="tel" required value={formData.phone} placeholder="Phone (SMS Notifications)"
+                  type="tel" required value={formData.phone} placeholder="Phone"
                   onChange={e => setFormData({...formData, phone: e.target.value})}
                   className="w-full px-6 py-4 rounded-2xl bg-slate-50 border-2 font-black"
                 />
@@ -211,7 +205,6 @@ const Dashboard: React.FC<DashboardProps> = ({ role, queue }) => {
   );
 };
 
-// Icons reused
 const ClinicIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M19 14c1.49 0 2.87-.47 4-1.26V17a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2v2.46c-1.13-.79-2.51-1.26-4-1.26-3.87 0-7 3.13-7 7s3.13 7 7 7Z"/><circle cx="19" cy="14" r="4"/><path d="M19 12v4"/><path d="M17 14h4"/></svg>;
 const PlusIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>;
 const PauseIcon = ({ size = 18 }: { size?: number }) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>;

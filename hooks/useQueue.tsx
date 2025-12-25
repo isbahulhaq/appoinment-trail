@@ -1,8 +1,8 @@
 
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { Appointment, AppointmentStatus, Priority } from '../types.ts';
-import { INITIAL_APPOINTMENTS } from '../constants.ts';
-import { sendNotification } from '../services/notificationService.ts';
+import { Appointment, AppointmentStatus, Priority } from '../types';
+import { INITIAL_APPOINTMENTS } from '../constants';
+import { sendNotification } from '../services/notificationService';
 
 const STORAGE_KEY = 'medqueue_appointments_v1';
 
@@ -31,8 +31,8 @@ export const useQueue = () => {
     }
     return INITIAL_APPOINTMENTS.map(a => ({ 
       ...a, 
-      phone: '555-0100', 
-      email: 'patient@example.com' 
+      phone: a.phone || '555-0100', 
+      email: a.email || 'patient@example.com' 
     })) as Appointment[];
   });
 
