@@ -1,8 +1,6 @@
 
-import { GoogleGenAI, Type } from "@google/genai";
+import { GoogleGenAI } from "@google/genai";
 import { CLINIC_CONFIG } from "../constants";
-
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || '' });
 
 const SYSTEM_INSTRUCTION = `
 You are the AI Assistant for ${CLINIC_CONFIG.name}, managed by ${CLINIC_CONFIG.doctorName}.
@@ -23,6 +21,9 @@ STRICT GUIDELINES:
 `;
 
 export async function askChatbot(prompt: string, context: any) {
+  // Always create a new instance right before use to ensure the latest API key is used
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || '' });
+  
   try {
     const response = await ai.models.generateContent({
       model: "gemini-3-flash-preview",

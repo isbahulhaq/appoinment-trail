@@ -1,63 +1,57 @@
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Appointment, AppointmentStatus, Priority } from '../types';
 import { INITIAL_APPOINTMENTS } from '../constants';
 
 export const useQueue = () => {
   const [appointments, setAppointments] = useState<Appointment[]>(() => {
-    const saved = localStorage.getItem('medqueue_appointments');
-    return saved ? JSON.parse(saved) : INITIAL_APPOINTMENTS;
+    try {
+      const saved = localStorage.getItem('medqueue_appointments');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) return parsed;
+      }
+    } catch (e) {
+      console.error("Failed to load appointments from storage", e);
+    }
+    return INITIAL_APPOINTMENTS;
   });
 
   const [isPaused, setIsPaused] = useState(false);
 
-  // Sync to local storage for "production" persistence simulation
+  // Persistence
   useEffect(() => {
     localStorage.setItem('medqueue_appointments', JSON.stringify(appointments));
   }, [appointments]);
 
-  const calculateETAs = useCallback(() => {
+  // Use a derived state for ETAs instead of updating the main state in a loop
+  // This prevents infinite render cycles while keeping data fresh
+  const appointmentsWithETA = useMemo(() => {
     const now = new Date();
     let currentTime = now;
 
     const currentInProgress = appointments.find(a => a.status === AppointmentStatus.IN_PROGRESS);
     
-    // If someone is in progress, the next person starts when they are expected to finish
     if (currentInProgress && currentInProgress.actualStartTime) {
       const startTime = new Date(currentInProgress.actualStartTime);
       currentTime = new Date(startTime.getTime() + currentInProgress.estimatedDuration * 60000);
-      // If estimated end is already in the past, baseline is NOW
       if (currentTime < now) currentTime = now;
     }
 
-    const updated = appointments.map(app => {
-      if (app.status === AppointmentStatus.COMPLETED || app.status === AppointmentStatus.CANCELLED) {
-        return app;
-      }
-      if (app.status === AppointmentStatus.IN_PROGRESS) {
+    return appointments.map(app => {
+      if (app.status !== AppointmentStatus.WAITING) {
         return app;
       }
 
-      const eta = currentTime.toTimeString().slice(0, 5);
+      const etaStr = currentTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
       const nextTime = new Date(currentTime.getTime() + app.estimatedDuration * 60000);
       currentTime = nextTime;
       
-      return { ...app, eta };
+      return { ...app, eta: etaStr };
     });
-
-    // Check if state actually changed to avoid infinite loop
-    if (JSON.stringify(updated) !== JSON.stringify(appointments)) {
-      setAppointments(updated);
-    }
   }, [appointments]);
 
-  useEffect(() => {
-    const interval = setInterval(calculateETAs, 30000); // Recalculate every 30s
-    calculateETAs();
-    return () => clearInterval(interval);
-  }, [calculateETAs]);
-
-  const startConsultation = (id: string) => {
+  const startConsultation = useCallback((id: string) => {
     setAppointments(prev => prev.map(a => {
       if (a.id === id) {
         return { 
@@ -66,7 +60,6 @@ export const useQueue = () => {
           actualStartTime: new Date().toISOString() 
         };
       }
-      // Can only have one in progress
       if (a.status === AppointmentStatus.IN_PROGRESS) {
         return { 
           ...a, 
@@ -76,9 +69,9 @@ export const useQueue = () => {
       }
       return a;
     }));
-  };
+  }, []);
 
-  const completeConsultation = (id: string) => {
+  const completeConsultation = useCallback((id: string) => {
     setAppointments(prev => prev.map(a => 
       a.id === id ? { 
         ...a, 
@@ -86,11 +79,11 @@ export const useQueue = () => {
         actualEndTime: new Date().toISOString() 
       } : a
     ));
-  };
+  }, []);
 
-  const addAppointment = (data: Partial<Appointment>) => {
+  const addAppointment = useCallback((data: Partial<Appointment>) => {
     const newApp: Appointment = {
-      id: Math.random().toString(36).substr(2, 9),
+      id: Math.random().toString(36).substr(2, 9).toUpperCase(),
       patientId: 'p-' + Date.now(),
       patientName: data.patientName || 'Walk-in',
       date: new Date().toISOString().split('T')[0],
@@ -103,7 +96,6 @@ export const useQueue = () => {
 
     setAppointments(prev => {
       if (newApp.priority === Priority.EMERGENCY) {
-        // Find first waiting person and insert before them
         const waitingIdx = prev.findIndex(a => a.status === AppointmentStatus.WAITING);
         if (waitingIdx === -1) return [...prev, newApp];
         const next = [...prev];
@@ -112,10 +104,10 @@ export const useQueue = () => {
       }
       return [...prev, newApp];
     });
-  };
+  }, []);
 
   return {
-    appointments,
+    appointments: appointmentsWithETA,
     startConsultation,
     completeConsultation,
     addAppointment,
