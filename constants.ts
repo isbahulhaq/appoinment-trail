@@ -1,5 +1,5 @@
 
-import { ClinicSettings } from './types';
+import { ClinicSettings, AppointmentStatus, Priority } from './types';
 
 export const CLINIC_CONFIG: ClinicSettings = {
   name: "Wellness Family Clinic",
@@ -18,8 +18,8 @@ export const INITIAL_APPOINTMENTS = [
     date: new Date().toISOString().split('T')[0],
     scheduledTime: '10:00',
     estimatedDuration: 15,
-    status: 'WAITING',
-    priority: 'NORMAL',
+    status: AppointmentStatus.WAITING,
+    priority: Priority.NORMAL,
     reason: 'Routine checkup'
   },
   {
@@ -29,8 +29,8 @@ export const INITIAL_APPOINTMENTS = [
     date: new Date().toISOString().split('T')[0],
     scheduledTime: '10:15',
     estimatedDuration: 15,
-    status: 'WAITING',
-    priority: 'NORMAL',
+    status: AppointmentStatus.WAITING,
+    priority: Priority.NORMAL,
     reason: 'Follow-up'
   }
 ];
