@@ -1,0 +1,7 @@
+{
+  "name": "MedQueue Pro - Advanced Clinic Management System",
+  "description": "A production-grade doctor clinic appointment and live queue management system featuring dynamic ETA calculations, real-time dashboards, and an integrated AI health assistant.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}
