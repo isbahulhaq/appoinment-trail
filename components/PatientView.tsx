@@ -17,7 +17,7 @@ const PatientView: React.FC<PatientViewProps> = ({ queue }) => {
   const [showBooking, setShowBooking] = useState(false);
   const [bookingSuccess, setBookingSuccess] = useState(false);
   const [chatMessages, setChatMessages] = useState<{role: 'user'|'bot', text: string}[]>([
-    { role: 'bot', text: "Welcome. I'm your digital concierge. How can I help you today?" }
+    { role: 'bot', text: "Welcome. I'm your digital health assistant. How can I help you today?" }
   ]);
   const [chatInput, setChatInput] = useState('');
   const [isAiTyping, setIsAiTyping] = useState(false);
@@ -25,7 +25,8 @@ const PatientView: React.FC<PatientViewProps> = ({ queue }) => {
   const chatEndRef = useRef<HTMLDivElement>(null);
   const [formData, setFormData] = useState({ 
     name: '', phone: '', email: '', reason: '', 
-    date: new Date().toISOString().split('T')[0], time: '' 
+    date: new Date().toLocaleDateString('en-CA'), // Get YYYY-MM-DD in local time
+    time: '' 
   });
 
   useEffect(() => {
@@ -44,7 +45,7 @@ const PatientView: React.FC<PatientViewProps> = ({ queue }) => {
       currentTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }),
       isClinicPaused: isPaused,
       waitingCount: waiting.length,
-      currentlyServing: inProgress ? inProgress.patientName : 'No active session',
+      currentlyServing: inProgress ? inProgress.patientName : 'None',
       estimatedWaitTimeMinutes: waiting.length * CLINIC_CONFIG.slotDuration,
       syncStatus: syncStatus
     };
@@ -53,7 +54,7 @@ const PatientView: React.FC<PatientViewProps> = ({ queue }) => {
       const response = await askChatbot(text, context);
       setChatMessages(prev => [...prev, { role: 'bot', text: response }]);
     } catch (err) {
-      setChatMessages(prev => [...prev, { role: 'bot', text: "Service temporarily unavailable." }]);
+      setChatMessages(prev => [...prev, { role: 'bot', text: "I'm having trouble connecting to the clinic. Please try again." }]);
     } finally {
       setIsAiTyping(false);
     }
@@ -61,19 +62,36 @@ const PatientView: React.FC<PatientViewProps> = ({ queue }) => {
 
   const timeSlots = useMemo(() => {
     const slots: string[] = [];
+    if (!formData.date) return slots;
+
     const now = new Date();
-    const isToday = formData.date === now.toISOString().split('T')[0];
+    // CRITICAL FIX: Parse YYYY-MM-DD as LOCAL date, not UTC
+    const [year, month, day] = formData.date.split('-').map(Number);
+    const selectedDate = new Date(year, month - 1, day);
+    
+    const isToday = selectedDate.toDateString() === now.toDateString();
+    const isPast = selectedDate < new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+    if (isPast) return slots;
+
     const generate = (startStr: string, endStr: string) => {
       const [sh, sm] = startStr.split(':').map(Number);
       const [eh, em] = endStr.split(':').map(Number);
-      let curr = new Date(formData.date); curr.setHours(sh, sm, 0, 0);
-      const end = new Date(formData.date); end.setHours(eh, em, 0, 0);
+      
+      let curr = new Date(year, month - 1, day, sh, sm, 0, 0);
+      const end = new Date(year, month - 1, day, eh, em, 0, 0);
+
       while (curr < end) {
-        const str = curr.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
-        if (!isToday || curr > now) slots.push(str);
+        const timeStr = curr.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
+        
+        // Only allow slots that are at least 15 minutes in the future for today
+        if (!isToday || curr.getTime() > now.getTime() + (15 * 60000)) {
+          slots.push(timeStr);
+        }
         curr = new Date(curr.getTime() + CLINIC_CONFIG.slotDuration * 60000);
       }
     };
+
     generate(CLINIC_CONFIG.morningShift.start, CLINIC_CONFIG.morningShift.end);
     generate(CLINIC_CONFIG.eveningShift.start, CLINIC_CONFIG.eveningShift.end);
     return slots;
@@ -82,12 +100,23 @@ const PatientView: React.FC<PatientViewProps> = ({ queue }) => {
   const handleBooking = (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.time) return;
-    addAppointment(formData);
+    addAppointment({
+      patientName: formData.name,
+      phone: formData.phone,
+      email: formData.email,
+      reason: formData.reason,
+      date: formData.date,
+      scheduledTime: formData.time
+    });
     setBookingSuccess(true);
     setTimeout(() => {
       setShowBooking(false);
       setBookingSuccess(false);
-      setFormData({ name: '', phone: '', email: '', reason: '', date: new Date().toISOString().split('T')[0], time: '' });
+      setFormData({ 
+        name: '', phone: '', email: '', reason: '', 
+        date: new Date().toLocaleDateString('en-CA'), 
+        time: '' 
+      });
     }, 2000);
   };
 
@@ -100,18 +129,19 @@ const PatientView: React.FC<PatientViewProps> = ({ queue }) => {
           </div>
           <div>
             <h1 className="text-4xl font-black text-slate-900 tracking-tighter leading-none">{CLINIC_CONFIG.name}</h1>
-            <p className="text-slate-500 font-bold mt-1">{CLINIC_CONFIG.doctorName} • Family Health Specialist</p>
+            <p className="text-slate-500 font-bold mt-1">{CLINIC_CONFIG.doctorName} • Medical Portal</p>
           </div>
         </div>
-        <button onClick={() => setShowBooking(true)} className="bg-indigo-600 text-white px-8 py-4 rounded-2xl font-black shadow-lg hover:-translate-y-1 transition active:scale-95">Book Now</button>
+        <button onClick={() => setShowBooking(true)} className="bg-indigo-600 text-white px-8 py-4 rounded-2xl font-black shadow-lg hover:-translate-y-1 transition active:scale-95">Book Appointment</button>
       </section>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+        {/* Queue Display */}
         <div className="lg:col-span-7 bg-slate-900 text-white rounded-[3rem] p-10 flex flex-col min-h-[550px] shadow-2xl relative overflow-hidden">
           <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/10 rounded-full blur-3xl"></div>
           <div className="relative z-10 flex justify-between items-start mb-12">
             <div>
-              <p className="text-indigo-400 text-[10px] font-black uppercase tracking-[0.4em] mb-1">Live Clinical Roster</p>
+              <p className="text-indigo-400 text-[10px] font-black uppercase tracking-[0.4em] mb-1">Clinic Live State</p>
               <h2 className="text-4xl font-black tracking-tighter">Queue Dashboard</h2>
             </div>
             <div className="bg-white/5 p-4 rounded-2xl text-center min-w-[120px]">
@@ -119,30 +149,32 @@ const PatientView: React.FC<PatientViewProps> = ({ queue }) => {
               <p className="text-3xl font-black tabular-nums">{waiting.length * CLINIC_CONFIG.slotDuration}m</p>
             </div>
           </div>
+          
           <div className="space-y-6 flex-grow relative z-10">
-            <div className="bg-white/5 border border-white/10 p-6 rounded-3xl flex items-center justify-between group hover:bg-white/10 transition">
+            <div className={`bg-white/5 border border-white/10 p-6 rounded-3xl flex items-center justify-between group transition ${inProgress ? 'border-emerald-500/30' : ''}`}>
               <div className="flex items-center gap-6">
-                <div className="w-14 h-14 bg-emerald-500 rounded-2xl flex items-center justify-center shadow-lg shadow-emerald-500/30">
+                <div className={`w-14 h-14 rounded-2xl flex items-center justify-center shadow-lg transition ${inProgress ? 'bg-emerald-500' : 'bg-slate-700'}`}>
                   <UserIcon size={24} color="white" />
                 </div>
                 <div>
-                  <p className="text-[10px] font-black text-emerald-400 uppercase tracking-widest">In Consultation</p>
-                  <p className="text-2xl font-black">{inProgress ? inProgress.patientName.split(' ')[0] + '***' : 'Ready for Intake'}</p>
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">In Consultation</p>
+                  <p className="text-2xl font-black truncate max-w-[200px]">{inProgress ? inProgress.patientName.split(' ')[0] + '***' : 'Available'}</p>
                 </div>
               </div>
-              <span className="w-3 h-3 bg-emerald-500 rounded-full animate-pulse shadow-[0_0_12px_rgba(16,185,129,0.8)]"></span>
+              <span className={`w-3 h-3 rounded-full animate-pulse ${inProgress ? 'bg-emerald-500 shadow-[0_0_12px_rgba(16,185,129,0.8)]' : 'bg-slate-600'}`}></span>
             </div>
+
             <div className="space-y-3">
-              <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-4 mb-4">Upcoming check-ins</p>
+              <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-4 mb-2">Patients in Waiting Room</p>
               {waiting.length === 0 ? (
                 <div className="py-16 text-center border-2 border-dashed border-white/5 rounded-3xl">
-                  <p className="text-slate-500 font-bold">No patients currently in queue</p>
+                  <p className="text-slate-500 font-bold">No active queue at the moment.</p>
                 </div>
               ) : (
                 waiting.slice(0, 4).map((app: any, idx: number) => (
-                  <div key={app.id} className="flex items-center justify-between bg-white/5 p-5 rounded-2xl hover:bg-white/10 transition">
+                  <div key={app.id} className="flex items-center justify-between bg-white/5 p-5 rounded-2xl hover:bg-white/10 transition border border-transparent hover:border-white/5">
                     <div className="flex items-center gap-5">
-                      <div className="text-xs font-black text-slate-600">#{idx + 1}</div>
+                      <div className="text-xs font-black text-slate-600">SEQ {idx + 1}</div>
                       <p className="font-bold text-lg tracking-tight">{app.patientName.split(' ')[0]}***</p>
                     </div>
                     <div className="text-right">
@@ -156,11 +188,12 @@ const PatientView: React.FC<PatientViewProps> = ({ queue }) => {
           </div>
         </div>
 
+        {/* AI Assistant */}
         <div className="lg:col-span-5 bg-white border border-slate-100 rounded-[3rem] shadow-xl overflow-hidden flex flex-col h-[550px]">
           <div className="bg-indigo-600 p-6 text-white flex items-center gap-4">
             <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center"><BotIcon size={24} /></div>
             <div>
-              <p className="text-xs font-black uppercase tracking-widest text-indigo-200">Wellness AI</p>
+              <p className="text-xs font-black uppercase tracking-widest text-indigo-200">Clinical AI</p>
               <h3 className="font-black text-xl tracking-tight leading-none">Smart Assistant</h3>
             </div>
           </div>
@@ -174,14 +207,14 @@ const PatientView: React.FC<PatientViewProps> = ({ queue }) => {
                 </div>
               </div>
             ))}
-            {isAiTyping && <div className="flex justify-start"><div className="bg-white px-4 py-2 rounded-xl shadow-sm animate-pulse">...</div></div>}
+            {isAiTyping && <div className="flex justify-start"><div className="bg-white px-4 py-2 rounded-xl shadow-sm animate-pulse">Assistant is thinking...</div></div>}
             <div ref={chatEndRef} />
           </div>
           <div className="p-6 border-t border-slate-100">
             <form onSubmit={(e) => { e.preventDefault(); handleChat(); }} className="relative">
               <input 
                 type="text" value={chatInput} onChange={e => setChatInput(e.target.value)}
-                placeholder="Ask status..."
+                placeholder="Ask about queue or help..."
                 className="w-full bg-slate-100 border-0 rounded-2xl px-6 py-4 text-sm focus:ring-2 focus:ring-indigo-600 outline-none pr-12 font-medium"
               />
               <button type="submit" className="absolute right-3 top-3 bg-indigo-600 text-white p-2 rounded-xl shadow-md"><SendIcon size={16} /></button>
@@ -190,29 +223,50 @@ const PatientView: React.FC<PatientViewProps> = ({ queue }) => {
         </div>
       </div>
 
+      {/* Booking Modal */}
       {showBooking && (
         <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
           <div className="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-xl overflow-hidden animate-in zoom-in-95">
             {bookingSuccess ? (
               <div className="p-20 text-center space-y-6">
-                <div className="w-24 h-24 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto"><CheckIcon size={40} /></div>
-                <h3 className="text-3xl font-black tracking-tighter">Confirmed</h3>
-                <p className="text-slate-500 font-bold">You'll receive SMS updates.</p>
+                <div className="w-24 h-24 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto animate-bounce"><CheckIcon size={40} /></div>
+                <h3 className="text-3xl font-black tracking-tighter uppercase">Slot Reserved</h3>
+                <p className="text-slate-500 font-bold">Your booking is confirmed. We will notify you when it's your turn.</p>
               </div>
             ) : (
               <form onSubmit={handleBooking} className="p-10 space-y-6">
-                <h3 className="text-2xl font-black tracking-tighter uppercase">Intake</h3>
-                <input required placeholder="Full Name" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className="w-full bg-slate-100 p-4 rounded-xl border-0" />
-                <input required type="tel" placeholder="Mobile" value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} className="w-full bg-slate-100 p-4 rounded-xl border-0" />
-                <div className="grid grid-cols-2 gap-4">
-                  <input type="date" value={formData.date} onChange={e => setFormData({...formData, date: e.target.value})} className="bg-slate-100 p-4 rounded-xl" />
-                  <select required value={formData.time} onChange={e => setFormData({...formData, time: e.target.value})} className="bg-slate-100 p-4 rounded-xl">
-                    <option value="">Time Slot</option>
-                    {timeSlots.map(t => <option key={t} value={t}>{t}</option>)}
-                  </select>
+                <div className="flex justify-between items-center">
+                   <h3 className="text-2xl font-black tracking-tighter uppercase">Appointment Details</h3>
+                   <button type="button" onClick={() => setShowBooking(false)} className="text-slate-300 hover:text-slate-900 transition">✕</button>
                 </div>
-                <button type="submit" className="w-full bg-indigo-600 text-white py-6 rounded-2xl font-black text-xl">Confirm</button>
-                <button type="button" onClick={() => setShowBooking(false)} className="w-full text-slate-400 mt-2">Cancel</button>
+                
+                <div className="space-y-4">
+                  <input required placeholder="Patient Full Name" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className="w-full bg-slate-50 border-2 border-slate-100 p-4 rounded-xl font-bold focus:border-indigo-600 outline-none transition" />
+                  <input required type="tel" placeholder="Mobile Number" value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} className="w-full bg-slate-50 border-2 border-slate-100 p-4 rounded-xl font-bold focus:border-indigo-600 outline-none transition" />
+                  
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-black text-slate-400 uppercase ml-2">Visit Date</label>
+                      <input type="date" value={formData.date} min={new Date().toLocaleDateString('en-CA')} onChange={e => setFormData({...formData, date: e.target.value, time: ''})} className="w-full bg-slate-50 border-2 border-slate-100 p-4 rounded-xl font-bold outline-none" />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-black text-slate-400 uppercase ml-2">Pick Time Slot</label>
+                      <select required value={formData.time} onChange={e => setFormData({...formData, time: e.target.value})} className="w-full bg-slate-50 border-2 border-slate-100 p-4 rounded-xl font-bold outline-none appearance-none cursor-pointer">
+                        <option value="">{formData.date ? 'Select Time' : 'Pick Date First'}</option>
+                        {timeSlots.map(t => <option key={t} value={t}>{t}</option>)}
+                        {formData.date && timeSlots.length === 0 && <option disabled>No more slots today</option>}
+                      </select>
+                    </div>
+                  </div>
+                </div>
+
+                <button 
+                  type="submit" 
+                  disabled={!formData.time || !formData.name}
+                  className="w-full bg-indigo-600 text-white py-6 rounded-2xl font-black text-xl shadow-xl hover:-translate-y-1 transition disabled:bg-slate-200 disabled:shadow-none disabled:translate-y-0"
+                >
+                  Confirm Reservation
+                </button>
               </form>
             )}
           </div>
